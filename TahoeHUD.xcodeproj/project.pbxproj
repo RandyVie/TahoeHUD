@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C90E95122E9053EC00142182 /* MenuIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = C90E950F2E9053EC00142182 /* MenuIcon.png */; };
+		C90E95132E9053EC00142182 /* MenuIcon@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C90E95112E9053EC00142182 /* MenuIcon@3x.png */; };
+		C90E95142E9053EC00142182 /* MenuIcon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C90E95102E9053EC00142182 /* MenuIcon@2x.png */; };
 		C94EC6BF2E8F24B30053D5D5 /* TahoeHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94EC6BE2E8F24B10053D5D5 /* TahoeHUD.swift */; };
 /* End PBXBuildFile section */
 
@@ -28,6 +31,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C90E950F2E9053EC00142182 /* MenuIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = MenuIcon.png; sourceTree = "<group>"; };
+		C90E95102E9053EC00142182 /* MenuIcon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "MenuIcon@2x.png"; sourceTree = "<group>"; };
+		C90E95112E9053EC00142182 /* MenuIcon@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "MenuIcon@3x.png"; sourceTree = "<group>"; };
 		C94EC6942E8F22BA0053D5D5 /* TahoeHUD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TahoeHUD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C94EC6A12E8F22BB0053D5D5 /* TahoeHUDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TahoeHUDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C94EC6AB2E8F22BB0053D5D5 /* TahoeHUDUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TahoeHUDUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -77,10 +83,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		C90E950E2E9053C400142182 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				C90E950F2E9053EC00142182 /* MenuIcon.png */,
+				C90E95102E9053EC00142182 /* MenuIcon@2x.png */,
+				C90E95112E9053EC00142182 /* MenuIcon@3x.png */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		C94EC68B2E8F22BA0053D5D5 = {
 			isa = PBXGroup;
 			children = (
 				C94EC6BE2E8F24B10053D5D5 /* TahoeHUD.swift */,
+				C90E950E2E9053C400142182 /* Resources */,
 				C94EC6962E8F22BA0053D5D5 /* TahoeHUD */,
 				C94EC6A42E8F22BB0053D5D5 /* TahoeHUDTests */,
 				C94EC6AE2E8F22BB0053D5D5 /* TahoeHUDUITests */,
@@ -219,6 +236,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C90E95122E9053EC00142182 /* MenuIcon.png in Resources */,
+				C90E95132E9053EC00142182 /* MenuIcon@3x.png in Resources */,
+				C90E95142E9053EC00142182 /* MenuIcon@2x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

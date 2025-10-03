@@ -40,8 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         guard let button = statusItem?.button else { return }
 
-        if let img = NSImage(systemSymbolName: "sun.max", accessibilityDescription: "TahoeHUD") {
-            img.isTemplate = true
+        if let img = NSImage(named: "MenuIcon") {
+            img.isTemplate = true // lets macOS auto color for light/dark
             button.image = img
         } else {
             button.title = "HUD"
