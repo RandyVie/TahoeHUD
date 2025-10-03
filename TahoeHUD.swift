@@ -7,6 +7,7 @@ import CoreAudio
 import IOKit
 import IOKit.graphics
 import ApplicationServices // for CGEventTap
+import ServiceManagement // for launch at login
 
 // MARK: - App entry
 @main
@@ -20,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var audioWatcher: AudioWatcher?
     private var brightnessWatcher: BrightnessWatcher?
     private var statusItem: NSStatusItem?
+    private var launchAtLoginItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -40,9 +42,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         guard let button = statusItem?.button else { return }
 
-        if let img = NSImage(named: "MenuIcon") {
-            img.isTemplate = true // lets macOS auto color for light/dark
+        if let img = NSImage(named: "MenuIcon") { // Custom icon support
+            img.isTemplate = true
             button.image = img
+        } else if let sys = NSImage(systemSymbolName: "sun.max", accessibilityDescription: "TahoeHUD") {
+            sys.isTemplate = true
+            button.image = sys
         } else {
             button.title = "HUD"
         }
@@ -52,6 +57,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let testItem = NSMenuItem(title: "Show Test HUD", action: #selector(testHUD), keyEquivalent: "h")
         testItem.target = self
         menu.addItem(testItem)
+
+        // Launch at login toggle
+        let loginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "l")
+        loginItem.target = self
+        loginItem.state = isLaunchAtLoginEnabled() ? .on : .off
+        menu.addItem(loginItem)
+        self.launchAtLoginItem = loginItem
+
         menu.addItem(.separator())
         let quitItem = NSMenuItem(title: "Quit TahoeHUD", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
@@ -65,6 +78,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quitApp() {
         NSApp.terminate(nil)
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        let newValue = !isLaunchAtLoginEnabled()
+        setLaunchAtLoginEnabled(newValue)
+        launchAtLoginItem?.state = newValue ? .on : .off
+    }
+
+    private func isLaunchAtLoginEnabled() -> Bool {
+        if #available(macOS 13.0, *) {
+            return SMAppService.mainApp.status == .enabled
+        } else {
+            return false
+        }
+    }
+
+    private func setLaunchAtLoginEnabled(_ enabled: Bool) {
+        if #available(macOS 13.0, *) {
+            do {
+                if enabled {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+            } catch {
+                print("Failed to update launch at login: \(error)")
+            }
+        }
     }
 }
 
@@ -295,6 +336,7 @@ final class BrightnessWatcher {
     }
 
     private func startTap() {
+        // Listen for NX_SYSDEFINED (14) events
         let mask = CGEventMask(1 << 14)
         let cb: CGEventTapCallBack = { _, type, cgEvent, refcon in
             guard let refcon = refcon else { return Unmanaged.passUnretained(cgEvent) }
@@ -318,6 +360,7 @@ final class BrightnessWatcher {
     }
 
     private func startPolling() {
+        // Prime from real brightness on internal displays
         if let real0 = Self.readBrightnessIOKit() {
             estimate = real0
             emit(real0, force: true)
@@ -332,12 +375,15 @@ final class BrightnessWatcher {
     }
 
     private func handleNXSystemDefined(_ event: NSEvent) {
+        // AUX control subtype only
         guard event.subtype.rawValue == 8 else { return }
         let data = event.data1
         let keyCode = (data >> 16) & 0xFFFF
         let keyFlags = (data >> 8) & 0xFF
+        // 0xA = key down, 0xB = key up; act on key down
         guard keyFlags == 0xA else { return }
 
+        // NX key types
         let NX_KEYTYPE_SOUND_UP = 0
         let NX_KEYTYPE_SOUND_DOWN = 1
         let NX_KEYTYPE_BRIGHTNESS_UP = 2
@@ -352,6 +398,7 @@ final class BrightnessWatcher {
             estimate = max(0, estimate - (1.0/16.0))
             emit(estimate, force: true)
         case NX_KEYTYPE_SOUND_UP, NX_KEYTYPE_SOUND_DOWN, NX_KEYTYPE_MUTE:
+            // Ignore sound keys here; AudioWatcher shows volume HUD
             break
         default:
             break
