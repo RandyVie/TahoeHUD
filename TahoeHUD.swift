@@ -170,17 +170,57 @@ final class AudioWatcher {
 
     func start() {
         attach()
-        if let v = currentVolume() { onVolume(v) }
+        // Initial emit respects mute state
+        if let muted = isMuted(), muted {
+            onVolume(0)
+        } else if let v = currentVolume() {
+            onVolume(v)
+        }
     }
 
     private func attach() {
         device = defaultDevice()
         guard device != kAudioObjectUnknown else { return }
-        var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar,
-                                              mScope: kAudioDevicePropertyScopeOutput,
-                                              mElement: kAudioObjectPropertyElementMaster)
-        AudioObjectAddPropertyListenerBlock(device, &addr, DispatchQueue.main) { [weak self] _, _ in
-            if let v = self?.currentVolume() { self?.onVolume(v) }
+
+        // Listen for volume scalar changes (master element)
+        var volAddr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar,
+                                                 mScope: kAudioDevicePropertyScopeOutput,
+                                                 mElement: kAudioObjectPropertyElementMaster)
+        AudioObjectAddPropertyListenerBlock(device, &volAddr, DispatchQueue.main) { [weak self] _, _ in
+            self?.emitCurrentState()
+        }
+        // Also listen on common channel elements (1 & 2)
+        for ch: UInt32 in [1, 2] {
+            var chAddr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar,
+                                                    mScope: kAudioDevicePropertyScopeOutput,
+                                                    mElement: ch)
+            AudioObjectAddPropertyListenerBlock(device, &chAddr, DispatchQueue.main) { [weak self] _, _ in
+                self?.emitCurrentState()
+            }
+        }
+
+        // Listen for mute toggles (master + channels)
+        var muteAddr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute,
+                                                  mScope: kAudioDevicePropertyScopeOutput,
+                                                  mElement: kAudioObjectPropertyElementMaster)
+        AudioObjectAddPropertyListenerBlock(device, &muteAddr, DispatchQueue.main) { [weak self] _, _ in
+            self?.emitCurrentState()
+        }
+        for ch: UInt32 in [1, 2] {
+            var chMute = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute,
+                                                    mScope: kAudioDevicePropertyScopeOutput,
+                                                    mElement: ch)
+            AudioObjectAddPropertyListenerBlock(device, &chMute, DispatchQueue.main) { [weak self] _, _ in
+                self?.emitCurrentState()
+            }
+        }
+    }
+
+    private func emitCurrentState() {
+        if let muted = isMuted(), muted {
+            onVolume(0) // force HUD to show speaker.slash icon
+        } else if let v = currentVolume() {
+            onVolume(v)
         }
     }
 
@@ -196,14 +236,36 @@ final class AudioWatcher {
 
     private func currentVolume() -> Float? {
         guard device != kAudioObjectUnknown else { return nil }
-        var vol = Float32(0)
-        var size = UInt32(MemoryLayout.size(ofValue: vol))
-        var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar,
-                                              mScope: kAudioDevicePropertyScopeOutput,
-                                              mElement: kAudioObjectPropertyElementMaster)
-        if AudioObjectGetPropertyData(device, &addr, 0, nil, &size, &vol) == noErr {
-            return max(0, min(1, vol))
+        func read(_ element: UInt32) -> Float32? {
+            var vol = Float32(0)
+            var size = UInt32(MemoryLayout.size(ofValue: vol))
+            var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar,
+                                                  mScope: kAudioDevicePropertyScopeOutput,
+                                                  mElement: element)
+            let err = AudioObjectGetPropertyData(device, &addr, 0, nil, &size, &vol)
+            return err == noErr ? vol : nil
         }
+        if let v = read(kAudioObjectPropertyElementMaster) { return max(0, min(1, v)) }
+        if let v = read(1) { return max(0, min(1, v)) }
+        if let v = read(2) { return max(0, min(1, v)) }
+        return nil
+    }
+
+    private func isMuted() -> Bool? {
+        guard device != kAudioObjectUnknown else { return nil }
+        func readMute(_ element: UInt32) -> Bool? {
+            var muted: UInt32 = 0
+            var size = UInt32(MemoryLayout.size(ofValue: muted))
+            var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute,
+                                                  mScope: kAudioDevicePropertyScopeOutput,
+                                                  mElement: element)
+            let err = AudioObjectGetPropertyData(device, &addr, 0, nil, &size, &muted)
+            return err == noErr ? (muted != 0) : nil
+        }
+        // Prefer master; fall back to channels
+        if let m = readMute(kAudioObjectPropertyElementMaster) { return m }
+        if let m = readMute(1) { return m }
+        if let m = readMute(2) { return m }
         return nil
     }
 }
